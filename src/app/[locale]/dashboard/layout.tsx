@@ -33,6 +33,7 @@ export default async function DashboardLayout({
           </div>
           <nav className="flex flex-wrap gap-3 text-sm">
             <Link href={`/${locale}/dashboard`}>Stats</Link>
+            <Link href={`/${locale}/dashboard/crm`}>CRM</Link>
             <Link href={`/${locale}/dashboard/products`}>Produits</Link>
             <Link href={`/${locale}/dashboard/orders`}>Commandes</Link>
             <Link href={`/${locale}/dashboard/payments`}>Paiements</Link>

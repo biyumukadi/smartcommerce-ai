@@ -67,6 +67,19 @@ export async function GET() {
         })),
       },
       ai: aiProviderStatus(),
+      crm: {
+        modules: [
+          "customers",
+          "segments",
+          "loyalty",
+          "coupons",
+          "complaints",
+          "consent_campaigns",
+        ],
+        analyticsAssistant: process.env.OPENAI_API_KEY
+          ? "openai"
+          : "heuristic_fallback (no LLM key)",
+      },
     },
     { status: healthy ? 200 : 503 },
   );

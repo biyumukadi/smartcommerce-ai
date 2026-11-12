@@ -207,6 +207,51 @@ enum AttributionSource {
   other
 }
 
+enum CustomerLifecycle {
+  prospect
+  active
+  churn_risk
+  inactive
+  vip
+}
+
+enum CouponType {
+  percent
+  fixed
+  free_shipping
+}
+
+enum CouponStatus {
+  active
+  expired
+  redeemed
+  revoked
+}
+
+enum ComplaintStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum LoyaltyTxnType {
+  earn
+  redeem
+  adjust
+  expire
+}
+
+enum MarketingAutomationStatus {
+  draft
+  scheduled
+  running
+  paused
+  completed
+  blocked_no_consent
+  failed
+}
+
 enum ConversationChannel {
   whatsapp
   instagram
@@ -371,6 +416,12 @@ model Store {
   messages     Message[]
   notifications Notification[]
   auditLogs    AuditLog[]
+  loyaltyLedgers LoyaltyLedger[]
+  coupons      Coupon[]
+  couponRedemptions CouponRedemption[]
+  complaints   Complaint[]
+  customerSegments CustomerSegment[]
+  marketingAutomations MarketingAutomation[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -493,30 +544,45 @@ model Inventory {
 }
 
 model Customer {
-  id                      String    @id @default(cuid())
-  storeId                 String
-  userId                  String?
-  email                   String?
-  phone                   String?
-  name                    String?
-  locale                  String?
-  tags                    String[]  @default([])
-  metadata                Json?
+  id                       String            @id @default(cuid())
+  storeId                  String
+  userId                   String?
+  email                    String?
+  phone                    String?
+  name                     String?
+  locale                   String?
+  tags                     String[]          @default([])
+  /// Computed / assigned segment keys e.g. vip, prospects, abandoned
+  segmentKeys              String[]          @default([])
+  lifecycle                CustomerLifecycle @default(prospect)
+  loyaltyPoints            Int               @default(0)
+  orderCount               Int               @default(0)
+  totalSpentMinor          Decimal           @default(0) @db.Decimal(18, 0)
+  lastOrderAt              DateTime?
+  metadata                 Json?
   /// Explicit opt-in for WhatsApp marketing / abandoned-cart nudges
-  marketingConsentWhatsApp Boolean  @default(false)
-  marketingConsentAt      DateTime?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  deletedAt               DateTime?
+  marketingConsentWhatsApp Boolean           @default(false)
+  marketingConsentEmail    Boolean           @default(false)
+  marketingConsentSms      Boolean           @default(false)
+  marketingConsentAt       DateTime?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  deletedAt                DateTime?
 
-  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  carts         Cart[]
-  orders        Order[]
-  conversations Conversation[]
+  store             Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  carts             Cart[]
+  orders            Order[]
+  conversations     Conversation[]
+  loyaltyLedgers    LoyaltyLedger[]
+  coupons           Coupon[]
+  couponRedemptions CouponRedemption[]
+  complaints        Complaint[]
 
   @@index([storeId, phone])
   @@index([storeId, userId])
   @@index([storeId, email])
+  @@index([storeId, lifecycle])
+  @@index([storeId, loyaltyPoints])
 }
 
 model Cart {
@@ -997,4 +1063,137 @@ model WebhookEvent {
 
   @@unique([provider, eventKey])
   @@index([createdAt])
+}
+
+/// Phase 7 — loyalty points ledger (earn/redeem/adjust)
+model LoyaltyLedger {
+  id          String         @id @default(cuid())
+  storeId     String
+  customerId  String
+  type        LoyaltyTxnType
+  points      Int
+  balanceAfter Int
+  reason      String?
+  orderId     String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, customerId, createdAt])
+  @@index([customerId, createdAt])
+}
+
+/// Personal / segment coupons
+model Coupon {
+  id              String       @id @default(cuid())
+  storeId         String
+  customerId      String?
+  code            String
+  type            CouponType   @default(percent)
+  valueMinor      Int
+  currency        String?
+  minOrderMinor   Int?
+  status          CouponStatus @default(active)
+  segmentKey      String?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  maxRedemptions  Int          @default(1)
+  redemptionCount Int          @default(0)
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  store       Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer    Customer?          @relation(fields: [customerId], references: [id])
+  redemptions CouponRedemption[]
+
+  @@unique([storeId, code])
+  @@index([storeId, status])
+  @@index([storeId, customerId])
+}
+
+model CouponRedemption {
+  id         String   @id @default(cuid())
+  storeId    String
+  couponId   String
+  customerId String
+  orderId    String?
+  createdAt  DateTime @default(now())
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  coupon   Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([couponId, createdAt])
+  @@index([storeId, customerId])
+}
+
+model Complaint {
+  id          String          @id @default(cuid())
+  storeId     String
+  customerId  String
+  orderId     String?
+  subject     String
+  body        String
+  status      ComplaintStatus @default(open)
+  resolution  String?
+  assignedTo  String?
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  resolvedAt  DateTime?
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status, createdAt])
+  @@index([customerId, createdAt])
+}
+
+/// Saved CRM segment definitions (rules JSON evaluated server-side)
+model CustomerSegment {
+  id          String   @id @default(cuid())
+  storeId     String
+  key         String
+  name        String
+  description String?
+  /// e.g. { "minOrders": 1, "consentWhatsApp": true, "lifecycle": ["vip"] }
+  rules       Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key])
+  @@index([storeId])
+}
+
+/// Consent-gated marketing automation (never spam without consent)
+model MarketingAutomation {
+  id               String                     @id @default(cuid())
+  storeId          String
+  name             String
+  channel          CampaignChannel            @default(whatsapp)
+  status           MarketingAutomationStatus  @default(draft)
+  segmentKey       String?
+  /// Requires matching marketingConsent* on each recipient
+  requireConsent   Boolean                    @default(true)
+  messageTemplate  String
+  scheduledAt      DateTime?
+  sentCount        Int                        @default(0)
+  skippedNoConsent Int                        @default(0)
+  failedCount      Int                        @default(0)
+  error            String?
+  metadata         Json?
+  createdById      String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  ranAt            DateTime?
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status])
+  @@index([storeId, channel])
 }
