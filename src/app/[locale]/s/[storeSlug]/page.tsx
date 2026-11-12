@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatMoney, localized } from "@/lib/utils";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { WhatsAppProductButton } from "@/components/whatsapp-product-button";
+import { AttributionCapture } from "@/components/attribution-capture";
 import { buildProductWhatsAppLink } from "@/lib/messaging/product-cta";
 import { getWhatsAppProvider } from "@/lib/whatsapp";
 
@@ -36,6 +38,9 @@ export default async function StorefrontPage({
 
   return (
     <main>
+      <Suspense fallback={null}>
+        <AttributionCapture />
+      </Suspense>
       <section className="hero-plane px-4 py-16 text-[var(--brand-fg)]">
         <div className="mx-auto max-w-6xl">
           <p

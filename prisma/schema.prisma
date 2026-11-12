@@ -167,6 +167,33 @@ enum SocialConnectionStatus {
   needs_approval
 }
 
+enum SocialPostStatus {
+  draft
+  scheduled
+  publishing
+  published
+  failed
+  unavailable
+  needs_approval
+}
+
+enum CatalogSyncStatus {
+  pending
+  exported
+  synced
+  failed
+  unavailable
+}
+
+enum AttributionSource {
+  meta
+  tiktok
+  whatsapp
+  organic
+  direct
+  other
+}
+
 enum ConversationChannel {
   whatsapp
   instagram
@@ -324,6 +351,9 @@ model Store {
   creatives    AdCreative[]
   aiJobs       AIJob[]
   socialConnections SocialConnection[]
+  socialPosts  SocialPost[]
+  catalogExports CatalogExport[]
+  attributionEvents AttributionEvent[]
   conversations Conversation[]
   messages     Message[]
   notifications Notification[]
@@ -718,6 +748,11 @@ model MarketingCampaign {
   currency           String?
   schedule           Json?
   externalCampaignId String?
+  /// Explicit merchant confirmation required before any paid spend/publish
+  spendConfirmedAt   DateTime?
+  spendConfirmedById String?
+  performance        Json?
+  error              String?
   createdById        String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
@@ -728,6 +763,68 @@ model MarketingCampaign {
 
   @@index([storeId, status])
   @@index([storeId, channel])
+}
+
+model SocialPost {
+  id               String           @id @default(cuid())
+  storeId          String
+  provider         SocialProvider
+  caption          String?
+  mediaUrls        Json?
+  hashtags         String[]         @default([])
+  script           String?
+  scheduledAt      DateTime?
+  status           SocialPostStatus @default(draft)
+  externalPostId   String?
+  error            String?
+  metadata         Json?
+  createdById      String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, provider, status])
+  @@index([storeId, scheduledAt])
+}
+
+model CatalogExport {
+  id             String            @id @default(cuid())
+  storeId        String
+  provider       SocialProvider
+  status         CatalogSyncStatus @default(pending)
+  itemCount      Int               @default(0)
+  exportPayload  Json?
+  externalRef    String?
+  error          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, provider, createdAt])
+}
+
+model AttributionEvent {
+  id         String            @id @default(cuid())
+  storeId    String
+  source     AttributionSource
+  medium     String?
+  campaign   String?
+  content    String?
+  term       String?
+  clickId    String?
+  sessionId  String?
+  orderId    String?
+  path       String?
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, source, createdAt])
+  @@index([storeId, orderId])
+  @@index([storeId, sessionId])
 }
 
 model AdCreative {
