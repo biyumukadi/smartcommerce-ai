@@ -5,8 +5,9 @@ import { logger } from "@/lib/logger";
 function nextOrderNumber(): string {
   const now = new Date();
   const stamp = now.toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
-  const rand = Math.floor(Math.random() * 900 + 100);
-  return `SC-${stamp}-${rand}`;
+  const ms = String(now.getMilliseconds()).padStart(3, "0");
+  const rand = Math.floor(Math.random() * 9000 + 1000);
+  return `SC-${stamp}${ms}-${rand}`;
 }
 
 export async function createOrderFromCart(input: {
