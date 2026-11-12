@@ -1,6 +1,6 @@
 # SmartCommerce AI
 
-SaaS ecommerce **multi-boutiques**, conçu **Africa / RDC-first** : catalogue, panier, commandes, paiements sandbox/mock, dashboard marchand, et **Studio Pubs AI** (fail-closed sans clé).
+SaaS ecommerce **multi-boutiques**, conçu **Africa / RDC-first** : catalogue, panier, commandes, paiements (cartes + Mobile Money via agrégateurs), dashboard marchand, et **Studio Pubs AI** (fail-closed sans clé).
 
 Langue UI primaire : **FR** (EN supporté). Devises : **USD / CDF / EUR**.
 
@@ -11,7 +11,7 @@ Langue UI primaire : **FR** (EN supporté). Devises : **USD / CDF / EUR**.
 - Prisma + PostgreSQL 16
 - Redis + BullMQ (jobs AI)
 - MinIO/S3 (stockage objets)
-- Paiements modulaires (`PaymentProvider`) — **mock** par défaut, Stripe sandbox optionnel
+- Paiements modulaires (`PaymentProvider`) — **mock**, Stripe / Flutterwave / Paystack sandbox, COD, stubs Maxicash/FlexPay
 - next-intl (FR/EN)
 
 ## Prérequis
@@ -66,26 +66,37 @@ npm run worker
 | `npm run db:seed` | Rôles, plan trial, boutique démo |
 | `npm run worker` | Worker BullMQ AI |
 
-## Ce qui est live vs stub
+## Ce qui est live vs stub (Phase 3)
 
-| Intégration | Statut MVP |
-|-------------|------------|
+| Intégration | Statut |
+|-------------|--------|
 | Auth email/password | **Live** |
 | Org / Store / RBAC seed | **Live** |
 | Catalogue, panier, checkout, stock | **Live** |
 | Paiement **mock** + webhooks signés idempotents | **Live (sandbox)** |
-| Stripe sandbox | **Optionnel** — nécessite `STRIPE_SECRET_KEY` + `PAYMENT_PROVIDER=stripe` |
+| **Cash on delivery** (`cod_pending` → confirm marchand) | **Live** |
+| Stripe sandbox (cartes) | **Optionnel** — `STRIPE_SECRET_KEY` + `PAYMENT_PROVIDER=stripe` |
+| Flutterwave sandbox (cartes + MM) | **Optionnel** — `FLW_*` ; sans clés = **unavailable** (pas de faux succès) |
+| Paystack sandbox | **Optionnel** — `PAYSTACK_*` ; sans clés = **unavailable** |
+| Maxicash / FlexPay RDC | **Stub unavailable** — contrat + clés requis |
+| Remboursements | **Live** mock ; sandbox providers si clés + API refund |
+| Reçus PDF | **Live** (générateur minimal) |
 | AI texte/image OpenAI | **Live si `OPENAI_API_KEY`** — sinon job `failed` explicite |
-| Meta Ads / TikTok Ads | **Stub** — pas de publication, pas de claim live |
-| WhatsApp Cloud API | **Stub CTA** — bouton/lien si numéro configuré ; **pas** Cloud API sans credentials |
-| MinIO/S3 | Configurée ; uploads avancés phase suivante |
+| Meta / TikTok / WhatsApp | **Stub** |
 
-## Paiements — règles
+Détails FR providers : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md)
+
+## Paiements — règles Phase 3
 
 1. `PAYMENT_PROVIDER=mock` (défaut) : intent `requires_action`, **jamais** `paid` sans webhook.
-2. Endpoint sandbox : `POST /api/payments/mock/confirm` émet un webhook **signé** (`PAYMENT_WEBHOOK_SECRET`).
-3. Webhooks : `POST /api/payments/webhook/:provider` — signature obligatoire, clé d’événement unique.
-4. Stripe : uniquement avec clés test ; sinon erreur claire.
+2. Checkout méthodes : `card`, `mobile_money` (+ opérateur `mpesa` / `airtel_money` / `orange_money`), `cash_on_delivery`, `bank`.
+3. COD : statut commande `cod_pending` — confirmation `POST /api/stores/:storeId/orders/:orderId/confirm-cod`.
+4. Endpoint sandbox mock : `POST /api/payments/mock/confirm` → webhook **signé**.
+5. Webhooks : `POST /api/payments/webhook/:provider` — signature + idempotence `WebhookEvent`.
+6. Sans clés agrégateur : provider `unavailable` / paiement `failed` — **aucun débit inventé**.
+7. Historique : dashboard `/dashboard/payments` + `GET /api/stores/:storeId/payments`.
+8. Refund : `POST /api/stores/:storeId/payments/:paymentId/refund`.
+9. Reçu : `GET /api/stores/:storeId/orders/:orderId/receipt`.
 
 ## AI Ads Studio
 
@@ -100,11 +111,15 @@ Toutes les requêtes commerce filtrent `storeId` / `organizationId`. Les helpers
 
 ## API utiles
 
-- `GET /api/health` — db, redis, statut providers
+- `GET /api/health` — db, redis, catalogue providers
 - `POST /api/auth/register` — signup + org/store
 - `GET/POST /api/stores/:storeId/products`
 - `GET/POST /api/storefront/:slug/cart`
 - `POST /api/storefront/:slug/checkout`
+- `GET /api/stores/:storeId/payments`
+- `POST /api/stores/:storeId/payments/:paymentId/refund`
+- `POST /api/stores/:storeId/orders/:orderId/confirm-cod`
+- `GET /api/stores/:storeId/orders/:orderId/receipt`
 - `POST /api/stores/:storeId/ai/jobs`
 
 ## Variables d’environnement

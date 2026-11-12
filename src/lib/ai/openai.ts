@@ -97,14 +97,14 @@ export class OpenAIImageProvider implements ImageGenProvider {
 /** Fail-closed noop when keys are absent */
 export class NoopTextProvider implements TextGenProvider {
   id = "noop";
-  async generateText(): Promise<TextGenResult> {
+  async generateText(_input: TextGenInput): Promise<TextGenResult> {
     throw new MissingApiKeyError("openai", "OPENAI_API_KEY");
   }
 }
 
 export class NoopImageProvider implements ImageGenProvider {
   id = "noop";
-  async generateImage(): Promise<ImageGenResult> {
+  async generateImage(_input: ImageGenInput): Promise<ImageGenResult> {
     throw new MissingApiKeyError("openai", "OPENAI_API_KEY");
   }
 }

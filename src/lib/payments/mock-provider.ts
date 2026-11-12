@@ -1,22 +1,39 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { signHmacSha256, verifyHmacSha256 } from "./hmac";
 import type {
   CreateIntentInput,
   PaymentIntent,
   PaymentProvider,
   PaymentResult,
+  ProviderAvailability,
+  RefundInput,
+  RefundResult,
   WebhookEvent,
 } from "./types";
-
-function sign(payload: string, secret: string): string {
-  return createHmac("sha256", secret).update(payload).digest("hex");
-}
 
 export class MockPaymentProvider implements PaymentProvider {
   id = "mock";
   mode = "mock" as const;
   capabilities = ["mobile_money", "card", "bank"] as const;
+  supportedCurrencies = ["USD", "CDF", "EUR"] as const;
+  supportedOperators = ["mpesa", "airtel_money", "orange_money"] as const;
+  refundsSupported = true;
 
   constructor(private webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || "") {}
+
+  describe(): ProviderAvailability {
+    return {
+      id: this.id,
+      mode: this.mode,
+      available: true,
+      capabilities: this.capabilities,
+      supportedCurrencies: this.supportedCurrencies,
+      supportedOperators: this.supportedOperators,
+      refundsSupported: true,
+      requiresContract: false,
+      notesFr:
+        "Mock local uniquement. Les paiements ne passent en succeeded qu'après webhook signé.",
+    };
+  }
 
   async createIntent(input: CreateIntentInput): Promise<PaymentIntent> {
     const providerRef = `mock_${input.idempotencyKey}`;
@@ -29,9 +46,14 @@ export class MockPaymentProvider implements PaymentProvider {
       clientAction: {
         type: "mock_confirm",
         url: confirmUrl,
+        message: "Confirmez via webhook mock signé (sandbox).",
       },
       raw: {
-        notice: "Sandbox mock — payment is NOT marked paid until webhook confirm",
+        notice:
+          "Sandbox mock — payment is NOT marked paid until webhook confirm",
+        method: input.method,
+        operator: input.operator,
+        currency: input.currency,
       },
     };
   }
@@ -44,6 +66,19 @@ export class MockPaymentProvider implements PaymentProvider {
     };
   }
 
+  async refund(input: RefundInput): Promise<RefundResult> {
+    return {
+      providerRef: `mock_rf_${input.idempotencyKey}`,
+      status: "succeeded",
+      amount: input.amount,
+      currency: input.currency,
+      raw: {
+        notice: "Mock refund recorded locally (no external charge).",
+        reason: input.reason,
+      },
+    };
+  }
+
   async parseWebhook(
     rawBody: string,
     signature: string | null,
@@ -51,14 +86,10 @@ export class MockPaymentProvider implements PaymentProvider {
     if (!this.webhookSecret) {
       throw new Error("PAYMENT_WEBHOOK_SECRET missing — refusing webhook");
     }
-    if (!signature) {
-      throw new Error("Missing webhook signature");
-    }
-    const expected = sign(rawBody, this.webhookSecret);
-    const a = Buffer.from(expected);
-    const b = Buffer.from(signature);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      throw new Error("Invalid webhook signature");
+    if (!verifyHmacSha256(rawBody, signature, this.webhookSecret)) {
+      throw new Error(
+        signature ? "Invalid webhook signature" : "Missing webhook signature",
+      );
     }
 
     const payload = JSON.parse(rawBody) as {
@@ -100,6 +131,23 @@ export class MockPaymentProvider implements PaymentProvider {
       amount: input.amount,
       currency: input.currency,
     });
-    return { body, signature: sign(body, this.webhookSecret) };
+    return { body, signature: signHmacSha256(body, this.webhookSecret) };
+  }
+
+  buildFailedWebhook(input: {
+    providerRef: string;
+    idempotencyKey: string;
+    amount: number;
+    currency: string;
+  }): { body: string; signature: string } {
+    const body = JSON.stringify({
+      eventKey: `mock_evt_fail_${input.providerRef}`,
+      type: "payment.failed",
+      providerRef: input.providerRef,
+      idempotencyKey: input.idempotencyKey,
+      amount: input.amount,
+      currency: input.currency,
+    });
+    return { body, signature: signHmacSha256(body, this.webhookSecret) };
   }
 }
