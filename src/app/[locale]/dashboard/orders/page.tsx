@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { redirect } from "next/navigation";
+import { PaymentActions } from "@/components/payment-actions";
 
 export default async function OrdersPage({
   params,
@@ -27,42 +28,57 @@ export default async function OrdersPage({
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Commandes</h1>
       <div className="space-y-3">
-        {orders.map((o) => (
-          <Card key={o.id}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold">{o.orderNumber}</p>
-                <p className="text-xs text-[var(--muted)]">
-                  {o.customer?.name || o.customer?.phone || "Guest"} ·{" "}
-                  {o.createdAt.toISOString()}
-                </p>
+        {orders.map((o) => {
+          const payment = o.payments[0];
+          return (
+            <Card key={o.id}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold">{o.orderNumber}</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {o.customer?.name || o.customer?.phone || "Guest"} ·{" "}
+                    {o.createdAt.toISOString()}
+                  </p>
+                </div>
+                <div className="text-right text-sm">
+                  <p className="font-semibold">
+                    {formatMoney(Number(o.totalAmount), o.currency)}
+                  </p>
+                  <p>
+                    {o.status} / {o.paymentStatus}
+                  </p>
+                  {payment && (
+                    <PaymentActions
+                      storeId={store.id}
+                      paymentId={payment.id}
+                      orderId={o.id}
+                      canRefund={payment.status === "succeeded"}
+                      isCod={
+                        payment.method === "cash_on_delivery" ||
+                        payment.provider === "cash_on_delivery"
+                      }
+                      orderStatus={o.status}
+                    />
+                  )}
+                </div>
               </div>
-              <div className="text-right text-sm">
-                <p className="font-semibold">
-                  {formatMoney(Number(o.totalAmount), o.currency)}
+              <ul className="mt-3 space-y-1 text-sm text-[var(--muted)]">
+                {o.items.map((item) => (
+                  <li key={item.id}>
+                    {item.sku} × {item.quantity}
+                  </li>
+                ))}
+              </ul>
+              {payment && (
+                <p className="mt-2 text-xs">
+                  Paiement {payment.provider}: {payment.status}
+                  {payment.operator ? ` · ${payment.operator}` : ""}
+                  {payment.providerRef ? ` (${payment.providerRef})` : ""}
                 </p>
-                <p>
-                  {o.status} / {o.paymentStatus}
-                </p>
-              </div>
-            </div>
-            <ul className="mt-3 space-y-1 text-sm text-[var(--muted)]">
-              {o.items.map((item) => (
-                <li key={item.id}>
-                  {item.sku} × {item.quantity}
-                </li>
-              ))}
-            </ul>
-            {o.payments[0] && (
-              <p className="mt-2 text-xs">
-                Paiement {o.payments[0].provider}: {o.payments[0].status}
-                {o.payments[0].providerRef
-                  ? ` (${o.payments[0].providerRef})`
-                  : ""}
-              </p>
-            )}
-          </Card>
-        ))}
+              )}
+            </Card>
+          );
+        })}
         {orders.length === 0 && (
           <Card className="text-[var(--muted)]">Aucune commande.</Card>
         )}

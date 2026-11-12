@@ -48,4 +48,27 @@ describe("MockPaymentProvider", () => {
       provider.parseWebhook(body.replace("4500", "9999"), signature),
     ).rejects.toThrow(/Invalid webhook signature/);
   });
+
+  it("supports mock refunds locally", async () => {
+    const refund = await provider.refund({
+      providerRef: "mock_pay_ord_1",
+      amount: 1000,
+      currency: "USD",
+      idempotencyKey: "rf_1",
+      reason: "test",
+    });
+    expect(refund.status).toBe("succeeded");
+    expect(refund.amount).toBe(1000);
+  });
+
+  it("describes USD/CDF/EUR + MM operators", () => {
+    const info = provider.describe();
+    expect(info.supportedCurrencies).toEqual(
+      expect.arrayContaining(["USD", "CDF", "EUR"]),
+    );
+    expect(info.supportedOperators).toEqual(
+      expect.arrayContaining(["mpesa", "airtel_money", "orange_money"]),
+    );
+    expect(info.refundsSupported).toBe(true);
+  });
 });

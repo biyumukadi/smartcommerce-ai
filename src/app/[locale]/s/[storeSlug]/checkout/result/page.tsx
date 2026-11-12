@@ -15,8 +15,12 @@ function ResultInner() {
   const router = useRouter();
   const orderId = search.get("orderId");
   const providerRef = search.get("providerRef") || search.get("mockPayment");
+  const method = search.get("method");
+  const status = search.get("status");
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const isCod = method === "cash_on_delivery" || status === "cod_pending";
 
   async function confirmMock() {
     if (!providerRef) return;
@@ -41,13 +45,27 @@ function ResultInner() {
       <Card className="space-y-4">
         <h1 className="text-2xl font-semibold">Résultat checkout</h1>
         <p className="text-sm text-[var(--muted)]">Commande: {orderId}</p>
-        <p className="text-sm text-[var(--muted)]">Provider ref: {providerRef}</p>
-        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-          Sandbox: le paiement n’est pas marqué réussi tant que le webhook
-          provider n’a pas confirmé. Bouton ci-dessous = émettre un webhook mock
-          signé (pas un succès silencieux).
+        <p className="text-sm text-[var(--muted)]">
+          Méthode: {method || "—"} · Statut: {status || "—"}
         </p>
-        {providerRef && (
+        <p className="text-sm text-[var(--muted)]">Provider ref: {providerRef}</p>
+
+        {isCod ? (
+          <p className="rounded-md bg-sky-50 p-3 text-sm text-sky-950">
+            Paiement à la livraison (COD). Aucun débit carte/Mobile Money. La
+            commande reste <strong>cod_pending</strong> jusqu&apos;à ce que le
+            marchand confirme la réception des espèces dans le dashboard.
+          </p>
+        ) : (
+          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+            Sandbox: le paiement n’est pas marqué réussi tant que le webhook
+            provider n’a pas confirmé. Bouton ci-dessous = émettre un webhook
+            mock signé (pas un succès silencieux). Si le provider est
+            indisponible, le statut reste failed/pending — aucun faux succès.
+          </p>
+        )}
+
+        {!isCod && providerRef?.startsWith("mock_") && (
           <Button onClick={confirmMock} disabled={loading}>
             {loading ? "Confirmation…" : "Confirmer paiement sandbox (webhook)"}
           </Button>

@@ -11,6 +11,9 @@ export async function POST(req: Request, { params }: Params) {
     const signature =
       req.headers.get("x-sc-signature") ||
       req.headers.get("stripe-signature") ||
+      req.headers.get("x-paystack-signature") ||
+      req.headers.get("verif-hash") ||
+      req.headers.get("x-flutterwave-signature") ||
       req.headers.get("x-webhook-signature");
 
     const result = await processPaymentWebhook({

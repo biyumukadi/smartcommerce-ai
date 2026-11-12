@@ -15,6 +15,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [method, setMethod] = useState("mobile_money");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,6 +33,10 @@ export default function CheckoutPage() {
         address: String(fd.get("address")),
         notes: String(fd.get("notes") || ""),
         method: String(fd.get("method") || "mobile_money"),
+        operator: fd.get("operator")
+          ? String(fd.get("operator"))
+          : undefined,
+        currency: String(fd.get("currency") || "USD"),
       }),
     });
     const data = await res.json();
@@ -41,9 +46,13 @@ export default function CheckoutPage() {
       return;
     }
     const providerRef = data.data.intent?.providerRef;
-    router.push(
-      `/${locale}/s/${storeSlug}/checkout/result?orderId=${data.data.order.id}&providerRef=${providerRef || ""}`,
-    );
+    const qs = new URLSearchParams({
+      orderId: data.data.order.id,
+      providerRef: providerRef || "",
+      method: data.data.payment.method || "",
+      status: data.data.order.status || "",
+    });
+    router.push(`/${locale}/s/${storeSlug}/checkout/result?${qs.toString()}`);
   }
 
   return (
@@ -51,8 +60,8 @@ export default function CheckoutPage() {
       <Card>
         <h1 className="mb-2 text-2xl font-semibold">Checkout</h1>
         <p className="mb-6 text-sm text-amber-800">
-          Mode paiement sandbox/mock — la commande n’est marquée payée qu’après
-          confirmation provider (webhook signé).
+          Mode sandbox — carte/MM : paid uniquement après webhook provider
+          signé. COD : chemin séparé (cod_pending), sans faux succès carte.
         </p>
         <form className="space-y-3" onSubmit={onSubmit}>
           <div>
@@ -76,18 +85,48 @@ export default function CheckoutPage() {
             <Input id="address" name="address" required />
           </div>
           <div>
+            <Label htmlFor="currency">Devise</Label>
+            <select
+              id="currency"
+              name="currency"
+              className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3"
+              defaultValue="USD"
+            >
+              <option value="USD">USD</option>
+              <option value="CDF">CDF</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div>
             <Label htmlFor="method">Méthode</Label>
             <select
               id="method"
               name="method"
               className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3"
-              defaultValue="mobile_money"
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
             >
               <option value="mobile_money">Mobile Money</option>
-              <option value="card">Carte</option>
+              <option value="card">Carte Visa / Mastercard</option>
+              <option value="cash_on_delivery">Paiement à la livraison (COD)</option>
               <option value="bank">Banque</option>
             </select>
           </div>
+          {method === "mobile_money" && (
+            <div>
+              <Label htmlFor="operator">Opérateur Mobile Money</Label>
+              <select
+                id="operator"
+                name="operator"
+                className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3"
+                defaultValue="orange_money"
+              >
+                <option value="orange_money">Orange Money</option>
+                <option value="mpesa">M-Pesa</option>
+                <option value="airtel_money">Airtel Money</option>
+              </select>
+            </div>
+          )}
           <div>
             <Label htmlFor="notes">Notes</Label>
             <Input id="notes" name="notes" />

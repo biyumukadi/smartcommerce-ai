@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { pingRedis } from "@/lib/redis";
 import { aiProviderStatus } from "@/lib/ai";
+import {
+  getPaymentProvider,
+  listProviderCatalog,
+  resolveDefaultAggregator,
+} from "@/lib/payments";
 
 export async function GET() {
   let db = false;
@@ -13,6 +18,8 @@ export async function GET() {
   }
   const redis = await pingRedis();
   const healthy = db && redis;
+  const active = getPaymentProvider();
+  const catalog = listProviderCatalog();
 
   return NextResponse.json(
     {
@@ -20,8 +27,21 @@ export async function GET() {
       db,
       redis,
       payments: {
-        provider: process.env.PAYMENT_PROVIDER || "mock",
-        mode: process.env.PAYMENT_PROVIDER === "stripe" ? "sandbox-if-keyed" : "mock",
+        default: resolveDefaultAggregator(),
+        active: {
+          id: active.id,
+          mode: active.mode,
+          available: active.mode !== "unavailable",
+          currencies: active.supportedCurrencies,
+          operators: active.supportedOperators,
+          refundsSupported: active.refundsSupported,
+        },
+        catalog: catalog.map((p) => ({
+          id: p.id,
+          mode: p.mode,
+          available: p.available,
+          requiresContract: p.requiresContract,
+        })),
       },
       ai: aiProviderStatus(),
       social: {

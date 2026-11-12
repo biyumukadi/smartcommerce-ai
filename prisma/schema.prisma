@@ -55,6 +55,7 @@ enum CartStatus {
 enum OrderStatus {
   pending
   awaiting_payment
+  cod_pending
   paid
   fulfilled
   cancelled
@@ -80,7 +81,14 @@ enum PaymentMethod {
   card
   mobile_money
   bank
+  cash_on_delivery
   other
+}
+
+enum RefundStatus {
+  pending
+  succeeded
+  failed
 }
 
 enum PaymentRecordStatus {
@@ -281,6 +289,7 @@ model Store {
   orders       Order[]
   orderItems   OrderItem[]
   payments     Payment[]
+  refunds      Refund[]
   campaigns    MarketingCampaign[]
   creatives    AdCreative[]
   aiJobs       AIJob[]
@@ -490,6 +499,7 @@ model Order {
   customer Customer?   @relation(fields: [customerId], references: [id])
   items    OrderItem[]
   payments Payment[]
+  refunds  Refund[]
 
   @@unique([storeId, orderNumber])
   @@index([storeId, status])
@@ -525,6 +535,8 @@ model Payment {
   providerRef    String?
   idempotencyKey String              @unique
   method         PaymentMethod       @default(other)
+  /// Mobile Money operator when method=mobile_money: mpesa | airtel_money | orange_money
+  operator       String?
   status         PaymentRecordStatus @default(pending)
   amount         Decimal             @db.Decimal(18, 0)
   currency       String
@@ -533,11 +545,35 @@ model Payment {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  store   Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds Refund[]
 
   @@index([storeId, orderId])
   @@index([provider, providerRef])
+  @@index([storeId, createdAt])
+}
+
+model Refund {
+  id          String       @id @default(cuid())
+  storeId     String
+  paymentId   String
+  orderId     String
+  providerRef String?
+  amount      Decimal      @db.Decimal(18, 0)
+  currency    String
+  reason      String?
+  status      RefundStatus @default(pending)
+  rawPayload  Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([storeId, orderId])
 }
 
 model Plan {

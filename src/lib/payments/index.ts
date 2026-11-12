@@ -1,22 +1,24 @@
-import { MockPaymentProvider } from "./mock-provider";
-import { StripeSandboxProvider } from "./stripe-sandbox";
-import type { PaymentProvider } from "./types";
-
-export type { PaymentProvider, WebhookEvent, PaymentIntent } from "./types";
-export { MockPaymentProvider };
-
-export function getPaymentProvider(): PaymentProvider {
-  const selected = (process.env.PAYMENT_PROVIDER || "mock").toLowerCase();
-
-  if (selected === "stripe") {
-    const key = process.env.STRIPE_SECRET_KEY;
-    if (!key) {
-      throw new Error(
-        "PAYMENT_PROVIDER=stripe but STRIPE_SECRET_KEY is missing. Use PAYMENT_PROVIDER=mock or set test keys.",
-      );
-    }
-    return new StripeSandboxProvider(key);
-  }
-
-  return new MockPaymentProvider();
-}
+export type {
+  PaymentProvider,
+  WebhookEvent,
+  PaymentIntent,
+  PaymentResult,
+  RefundResult,
+  ProviderAvailability,
+  MobileMoneyOperator,
+  PaymentMethodKind,
+  PaymentCapability,
+} from "./types";
+export { MockPaymentProvider } from "./mock-provider";
+export { StripeSandboxProvider } from "./stripe-sandbox";
+export { FlutterwaveSandboxProvider } from "./flutterwave-sandbox";
+export { PaystackSandboxProvider } from "./paystack-sandbox";
+export { CashOnDeliveryProvider } from "./cash-on-delivery";
+export { UnavailablePaymentProvider } from "./unavailable-provider";
+export {
+  getPaymentProvider,
+  getPaymentProviderForMethod,
+  getProviderById,
+  listProviderCatalog,
+  resolveDefaultAggregator,
+} from "./registry";
