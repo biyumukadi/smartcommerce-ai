@@ -11,6 +11,7 @@ import {
   recordCost,
   summarizeCosts,
 } from "../src/lib/billing";
+import { ensureOrgAndStoreRoles } from "./helpers/ensure-basics";
 
 const prisma = new PrismaClient();
 
@@ -27,31 +28,7 @@ describe("SaaS billing Phase 8", () => {
     process.env.CREDENTIALS_ENCRYPTION_KEY =
       "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     await ensureSaasPlansSeeded();
-
-    await prisma.role.upsert({
-      where: { code: "ORG_OWNER" },
-      update: {
-        permissions: [
-          "org:manage",
-          "stores:write",
-          "members:write",
-          "billing:read",
-          "billing:write",
-        ],
-      },
-      create: {
-        code: "ORG_OWNER",
-        name: "Organization Owner",
-        scope: "organization",
-        permissions: [
-          "org:manage",
-          "stores:write",
-          "members:write",
-          "billing:read",
-          "billing:write",
-        ],
-      },
-    });
+    await ensureOrgAndStoreRoles(prisma);
 
     const user = await prisma.user.create({
       data: {

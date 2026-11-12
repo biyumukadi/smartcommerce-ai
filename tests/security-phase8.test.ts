@@ -16,6 +16,7 @@ import {
   writeAuditLog,
 } from "../src/lib/security";
 import { createHmac } from "crypto";
+import { ensureRole } from "./helpers/ensure-basics";
 
 const prisma = new PrismaClient();
 
@@ -145,16 +146,11 @@ describe("Security Phase 8", () => {
   });
 
   it("RBAC matrix audit runs", async () => {
-    // ensure roles exist from other tests/seed patterns
-    await prisma.role.upsert({
-      where: { code: "STORE_VIEWER" },
-      update: {},
-      create: {
-        code: "STORE_VIEWER",
-        name: "Store Viewer",
-        scope: "store",
-        permissions: ["orders:read", "products:read", "stats:read"],
-      },
+    await ensureRole(prisma, {
+      code: "STORE_VIEWER",
+      name: "Store Viewer",
+      scope: "store",
+      permissions: ["orders:read", "products:read", "stats:read"],
     });
     const audit = await auditRbacRoles();
     expect(audit.length).toBeGreaterThan(0);

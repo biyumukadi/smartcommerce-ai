@@ -6,6 +6,10 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     setupFiles: [],
+    // Soften parallel DB setup races across suites (roles/plans upserts)
+    poolOptions: {
+      threads: { maxThreads: 4, minThreads: 1 },
+    },
   },
   resolve: {
     alias: {
