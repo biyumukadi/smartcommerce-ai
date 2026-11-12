@@ -119,11 +119,14 @@ enum CreativeType {
   text
   image
   carousel
+  video
+  banner
 }
 
 enum CreativeStatus {
   draft
   ready
+  approved
   published
   rejected
 }
@@ -132,6 +135,16 @@ enum AIJobType {
   ad_copy
   ad_image
   product_description
+  ad_copy_pack
+  ad_visual
+  ad_video_script
+  ad_ab_variants
+}
+
+enum AdStrategy {
+  sales
+  acquisition
+  brand
 }
 
 enum AIJobStatus {
@@ -828,19 +841,31 @@ model AttributionEvent {
 }
 
 model AdCreative {
-  id         String         @id @default(cuid())
-  storeId    String
-  campaignId String?
-  type       CreativeType
-  locale     String
-  headline   String?
-  body       String?
-  cta        String?
-  assetKey   String?
-  aiJobId    String?
-  status     CreativeStatus @default(draft)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id           String         @id @default(cuid())
+  storeId      String
+  campaignId   String?
+  type         CreativeType
+  locale       String
+  headline     String?
+  body         String?
+  cta          String?
+  assetKey     String?
+  aiJobId      String?
+  status       CreativeStatus @default(draft)
+  strategy     AdStrategy?
+  /// e.g. ig_feed_1x1, ig_story_9x16, fb_feed, wa_status, tiktok_9x16, banner_16x9
+  format       String?
+  variantGroup String?
+  variantLabel String?
+  hashtags     String[]       @default([])
+  overlays     Json?
+  productId    String?
+  metadata     Json?
+  approvedAt   DateTime?
+  approvedById String?
+  publishedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   store    Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
   campaign MarketingCampaign? @relation(fields: [campaignId], references: [id])
@@ -848,6 +873,8 @@ model AdCreative {
 
   @@index([storeId, campaignId])
   @@index([aiJobId])
+  @@index([storeId, status])
+  @@index([storeId, variantGroup])
 }
 
 model AIJob {
@@ -885,6 +912,9 @@ model AIUsage {
   periodEnd      DateTime
   tokensUsed     Int      @default(0)
   imageCount     Int      @default(0)
+  videoCount     Int      @default(0)
+  creditsUsed    Int      @default(0)
+  creditsLimit   Int      @default(500)
   costMinor      Decimal  @default(0) @db.Decimal(18, 0)
   currency       String   @default("USD")
 

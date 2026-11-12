@@ -12,7 +12,13 @@ export type TextGenResult = {
 
 export type ImageGenInput = {
   prompt: string;
-  size?: "1024x1024" | "512x512";
+  size?: "1024x1024" | "1792x1024" | "1024x1792" | "512x512";
+  /** Optional overlay hints — provider may ignore; we store separately */
+  overlays?: {
+    priceLabel?: string;
+    discountPercent?: number | null;
+    productName?: string;
+  };
 };
 
 export type ImageGenResult = {
