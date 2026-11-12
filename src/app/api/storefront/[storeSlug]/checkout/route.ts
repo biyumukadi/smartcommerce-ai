@@ -20,6 +20,7 @@ const schema = z.object({
     .default("mobile_money"),
   operator: z.enum(["mpesa", "airtel_money", "orange_money"]).optional(),
   currency: z.enum(["USD", "CDF", "EUR"]).optional(),
+  whatsappConsent: z.boolean().optional(),
 });
 
 export async function POST(req: Request, { params }: Params) {
@@ -50,6 +51,19 @@ export async function POST(req: Request, { params }: Params) {
       await prisma.cart.update({
         where: { id: cart.id },
         data: { currency: body.currency },
+      });
+    }
+
+    if (body.whatsappConsent && (body.phone || body.email)) {
+      const { setMarketingConsent } = await import(
+        "@/lib/messaging/cart-nudges"
+      );
+      await setMarketingConsent({
+        storeId: store.id,
+        consent: true,
+        phone: body.phone || undefined,
+        email: body.email || undefined,
+        name: body.name,
       });
     }
 

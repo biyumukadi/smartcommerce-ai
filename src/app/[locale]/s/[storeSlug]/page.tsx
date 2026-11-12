@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatMoney, localized } from "@/lib/utils";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { WhatsAppProductButton } from "@/components/whatsapp-product-button";
+import { buildProductWhatsAppLink } from "@/lib/messaging/product-cta";
+import { getWhatsAppProvider } from "@/lib/whatsapp";
 
 export default async function StorefrontPage({
   params,
@@ -28,6 +31,8 @@ export default async function StorefrontPage({
 
   const settings = (store.settings || {}) as { whatsappCta?: string | null };
   const wa = settings.whatsappCta;
+  const waProvider = getWhatsAppProvider().describe();
+  const appUrl = process.env.APP_URL || "http://localhost:3000";
 
   return (
     <main>
@@ -41,7 +46,7 @@ export default async function StorefrontPage({
           </p>
           <p className="fade-up-delay mt-3 max-w-xl text-white/85">
             {store.description ||
-              "Boutique SmartCommerce — catalogue live, checkout sandbox."}
+              "Boutique SmartCommerce — catalogue live, checkout sandbox, WhatsApp."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -59,10 +64,14 @@ export default async function StorefrontPage({
               </a>
             ) : (
               <span className="rounded-md border border-white/20 px-4 py-2 text-sm text-white/70">
-                WhatsApp CTA (stub — configurez le numéro boutique)
+                WhatsApp CTA (configurez le numéro boutique)
               </span>
             )}
           </div>
+          <p className="mt-3 text-xs text-white/70">
+            Cloud API: {waProvider.mode}
+            {waProvider.available ? "" : " — envois serveur indisponibles sans clés"}
+          </p>
         </div>
       </section>
 
@@ -75,31 +84,42 @@ export default async function StorefrontPage({
             const available =
               (variant.inventory?.quantityOnHand || 0) -
               (variant.inventory?.quantityReserved || 0);
+            const name = localized(product.name, locale);
+            const priceLabel = formatMoney(
+              Number(variant.priceAmount),
+              variant.currency,
+              locale === "en" ? "en-US" : "fr-CD",
+            );
+            const productWa = wa
+              ? buildProductWhatsAppLink({
+                  phoneE164: wa,
+                  storeName: store.name,
+                  productName: name,
+                  sku: variant.sku,
+                  priceLabel,
+                  storeUrl: `${appUrl}/${locale}/s/${store.slug}`,
+                })
+              : null;
             return (
               <article
                 key={product.id}
                 className="border-b border-[var(--line)] pb-6"
               >
                 <div className="mb-3 aspect-[4/3] rounded-lg bg-[var(--surface-2)]" />
-                <h3 className="text-lg font-semibold">
-                  {localized(product.name, locale)}
-                </h3>
+                <h3 className="text-lg font-semibold">{name}</h3>
                 <p className="mt-1 text-sm text-[var(--muted)]">
                   {localized(product.description, locale)}
                 </p>
-                <div className="mt-3 flex items-center justify-between">
-                  <p className="font-semibold">
-                    {formatMoney(
-                      Number(variant.priceAmount),
-                      variant.currency,
-                      locale === "en" ? "en-US" : "fr-CD",
-                    )}
-                  </p>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <p className="font-semibold">{priceLabel}</p>
                   <AddToCartButton
                     storeSlug={store.slug}
                     variantId={variant.id}
                     disabled={available <= 0}
                   />
+                </div>
+                <div className="mt-2">
+                  <WhatsAppProductButton href={productWa} />
                 </div>
                 <p className="mt-1 text-xs text-[var(--muted)]">
                   Stock dispo: {available}

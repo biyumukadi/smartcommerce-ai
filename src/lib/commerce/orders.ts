@@ -167,5 +167,24 @@ export async function markOrderPaid(input: {
     });
 
     return updated;
+  }).then(async (updated) => {
+    // Best-effort WhatsApp payment template hook — never blocks paid transition
+    try {
+      const { sendOrderLifecycleWhatsApp } = await import(
+        "@/lib/messaging/notifications"
+      );
+      await sendOrderLifecycleWhatsApp({
+        storeId: input.storeId,
+        orderId: input.orderId,
+        template: "payment_received",
+      });
+    } catch (err) {
+      logger.warn("whatsapp.payment_notify_skipped", {
+        storeId: input.storeId,
+        orderId: input.orderId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    return updated;
   });
 }

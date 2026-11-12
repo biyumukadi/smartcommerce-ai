@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatMoney, localized } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { WhatsAppConsent } from "@/components/whatsapp-consent";
 
 export default async function CartPage({
   params,
@@ -73,6 +74,10 @@ export default async function CartPage({
           Checkout
         </Link>
       </Card>
+      <div className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold">WhatsApp — consentement</h2>
+        <WhatsAppConsent storeSlug={store.slug} />
+      </div>
     </main>
   );
 }
