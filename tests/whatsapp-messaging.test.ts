@@ -10,6 +10,7 @@ import { processAbandonedCartNudges, setMarketingConsent } from "../src/lib/mess
 import { loadStoreCatalogFacts, generateSalesAssistantReply } from "../src/lib/messaging/assistant";
 import { processInboundWhatsAppMessages } from "../src/lib/messaging/inbound";
 import { MockWhatsAppProvider } from "../src/lib/whatsapp";
+import { ensureOrgAndStoreRoles } from "./helpers/ensure-basics";
 
 const prisma = new PrismaClient();
 
@@ -23,38 +24,7 @@ describe("WhatsApp messaging (DB)", () => {
     process.env.PAYMENT_WEBHOOK_SECRET = "wa-test-secret";
     delete process.env.OPENAI_API_KEY;
 
-    await prisma.role.upsert({
-      where: { code: "ORG_OWNER" },
-      update: {},
-      create: {
-        code: "ORG_OWNER",
-        name: "Organization Owner",
-        scope: "organization",
-        permissions: ["org:manage"],
-      },
-    });
-    await prisma.role.upsert({
-      where: { code: "STORE_OWNER" },
-      update: {},
-      create: {
-        code: "STORE_OWNER",
-        name: "Store Owner",
-        scope: "store",
-        permissions: ["orders:write"],
-      },
-    });
-    await prisma.plan.upsert({
-      where: { code: "trial" },
-      update: {},
-      create: {
-        code: "trial",
-        name: { fr: "Essai", en: "Trial" },
-        priceAmount: 0,
-        currency: "USD",
-        interval: "month",
-        limits: { stores: 3 },
-      },
-    });
+    await ensureOrgAndStoreRoles(prisma);
 
     const user = await prisma.user.create({
       data: {

@@ -9,6 +9,7 @@ import {
 } from "../src/lib/commerce/payments";
 import { MockPaymentProvider } from "../src/lib/payments/mock-provider";
 import { processPaymentWebhook } from "../src/lib/commerce/payments";
+import { ensureOrgAndStoreRoles } from "./helpers/ensure-basics";
 
 const prisma = new PrismaClient();
 
@@ -20,38 +21,7 @@ describe("COD + refunds (DB)", () => {
     process.env.PAYMENT_WEBHOOK_SECRET = "test-webhook-secret";
     process.env.PAYMENT_PROVIDER = "mock";
 
-    await prisma.role.upsert({
-      where: { code: "ORG_OWNER" },
-      update: {},
-      create: {
-        code: "ORG_OWNER",
-        name: "Organization Owner",
-        scope: "organization",
-        permissions: ["org:manage"],
-      },
-    });
-    await prisma.role.upsert({
-      where: { code: "STORE_OWNER" },
-      update: {},
-      create: {
-        code: "STORE_OWNER",
-        name: "Store Owner",
-        scope: "store",
-        permissions: ["products:write", "orders:write", "orders:refund"],
-      },
-    });
-    await prisma.plan.upsert({
-      where: { code: "trial" },
-      update: {},
-      create: {
-        code: "trial",
-        name: { fr: "Essai", en: "Trial" },
-        priceAmount: 0,
-        currency: "USD",
-        interval: "month",
-        limits: { stores: 3 },
-      },
-    });
+    await ensureOrgAndStoreRoles(prisma);
 
     const user = await prisma.user.create({
       data: {

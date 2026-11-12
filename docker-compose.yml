@@ -81,8 +81,30 @@ services:
       S3_BUCKET: smartcommerce
       S3_FORCE_PATH_STYLE: "true"
       CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      SAAS_BILLING_PROVIDER: ${SAAS_BILLING_PROVIDER:-mock}
+      MFA_REQUIRED: ${MFA_REQUIRED:-false}
+      PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-demo@smartcommerce.ai}
+      AI_CREDITS_LIMIT: ${AI_CREDITS_LIMIT:-500}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-auto}
+      WHATSAPP_WEBHOOK_SECRET: ${WHATSAPP_WEBHOOK_SECRET:-dev-wa-webhook-secret-change-me}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY:-}
+      TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
     ports:
       - "3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   worker:
     build:

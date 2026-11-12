@@ -9,12 +9,17 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:ci": "vitest run --reporter=dot",
+    "typecheck": "tsc --noEmit",
+    "ci": "npm run typecheck && npm run test:ci",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "worker": "tsx src/worker/index.ts",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
     "postinstall": "prisma generate"
   },
   "prisma": {
