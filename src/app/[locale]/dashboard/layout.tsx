@@ -40,6 +40,9 @@ export default async function DashboardLayout({
             <Link href={`/${locale}/dashboard/inbox`}>Inbox WA</Link>
             <Link href={`/${locale}/dashboard/social`}>Social</Link>
             <Link href={`/${locale}/dashboard/ads`}>Studio AI</Link>
+            <Link href={`/${locale}/dashboard/billing`}>Abonnement</Link>
+            <Link href={`/${locale}/dashboard/security`}>Sécurité</Link>
+            <Link href={`/${locale}/dashboard/admin`}>Admin</Link>
             {store && (
               <Link href={`/${locale}/s/${store.slug}`} className="text-[var(--brand)]">
                 Vitrine

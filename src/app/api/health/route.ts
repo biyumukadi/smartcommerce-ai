@@ -9,6 +9,8 @@ import {
 } from "@/lib/payments";
 import { getWhatsAppProvider, listWhatsAppCatalog } from "@/lib/whatsapp";
 import { listSocialCatalog } from "@/lib/social";
+import { resolveSaasBillingProvider } from "@/lib/billing";
+import { webhookAuditSummary } from "@/lib/security/webhooks";
 
 export async function GET() {
   let db = false;
@@ -79,6 +81,15 @@ export async function GET() {
         analyticsAssistant: process.env.OPENAI_API_KEY
           ? "openai"
           : "heuristic_fallback (no LLM key)",
+      },
+      saasBilling: {
+        provider: resolveSaasBillingProvider(),
+        plans: ["starter", "business", "premium"],
+        note: "SaaS fees ≠ Ads/WhatsApp/AI/transaction costs",
+      },
+      security: {
+        webhooks: webhookAuditSummary(),
+        mfaRequired: process.env.MFA_REQUIRED === "true",
       },
     },
     { status: healthy ? 200 : 503 },

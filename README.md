@@ -61,12 +61,13 @@ npm run worker
 |----------|-------------|
 | `npm run dev` | Serveur Next.js |
 | `npm run build` / `npm start` | Build & prod |
-| `npm test` | Tests Vitest (helpers + flux commerce) |
+| `npm test` / `npm run ci` | Tests Vitest · typecheck CI |
 | `npm run db:migrate` | Migrations Prisma |
-| `npm run db:seed` | Rôles, plan trial, boutique démo |
+| `npm run db:seed` | Rôles, plans SaaS, boutique démo |
 | `npm run worker` | Worker BullMQ (AI + WhatsApp nudges) |
+| `npm run docker:up` | Stack Compose build |
 
-## Ce qui est live vs stub (Phases 3–5)
+## Ce qui est live vs stub (Phases 3–8)
 
 | Intégration | Statut |
 |-------------|--------|
@@ -87,7 +88,11 @@ npm run worker
 | Meta / TikTok OAuth, posts, Ads scaffolding | **Sandbox-if-keyed** ; sinon unavailable |
 | Attribution UTM / click ids | **Live** |
 
-Détails FR : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md) · [`docs/whatsapp-meta.fr.md`](docs/whatsapp-meta.fr.md) · [`docs/social-meta-tiktok.fr.md`](docs/social-meta-tiktok.fr.md)
+| CRM / analytics / campagnes consenties | **Live** (Phase 7) |
+| Abonnements SaaS Starter/Business/Premium | **Live mock/stripe-if-keyed** ; sinon unavailable |
+| MFA TOTP · privacy export/delete · super-admin | **Live** (Phase 8) |
+
+Détails FR : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md) · [`docs/whatsapp-meta.fr.md`](docs/whatsapp-meta.fr.md) · [`docs/social-meta-tiktok.fr.md`](docs/social-meta-tiktok.fr.md) · [`docs/ai-ads-studio.fr.md`](docs/ai-ads-studio.fr.md) · [`docs/crm-analytics.fr.md`](docs/crm-analytics.fr.md) · [`docs/installation.fr.md`](docs/installation.fr.md) · [`docs/deploiement.fr.md`](docs/deploiement.fr.md) · [`docs/guide-utilisateur.fr.md`](docs/guide-utilisateur.fr.md)
 
 ## Paiements — règles Phase 3
 

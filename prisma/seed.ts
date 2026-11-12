@@ -88,49 +88,153 @@ async function main() {
     });
   }
 
-  await prisma.plan.upsert({
-    where: { code: "trial" },
-    update: {},
-    create: {
+  const plans = [
+    {
       code: "trial",
       name: { fr: "Essai", en: "Trial" },
       priceAmount: 0,
-      currency: "USD",
-      interval: "month",
-      limits: { stores: 3, products: 100, aiJobs: 50, staff: 5 },
-      isActive: true,
+      limits: {
+        stores: 3,
+        products: 100,
+        staff: 5,
+        aiCredits: 50,
+        campaigns: 5,
+        crm: true,
+        social: true,
+        analyticsAssistant: true,
+        features: ["trial_all"],
+      },
     },
-  });
-
-  await prisma.plan.upsert({
-    where: { code: "starter" },
-    update: {},
-    create: {
+    {
       code: "starter",
       name: { fr: "Starter", en: "Starter" },
-      priceAmount: 2900,
-      currency: "USD",
-      interval: "month",
-      limits: { stores: 5, products: 500, aiJobs: 200, staff: 10 },
-      isActive: true,
+      priceAmount: 1900,
+      limits: {
+        stores: 1,
+        products: 200,
+        staff: 3,
+        aiCredits: 200,
+        campaigns: 10,
+        crm: true,
+        social: false,
+        analyticsAssistant: false,
+        features: ["catalogue", "orders", "payments_mock", "ai_ads_basic"],
+      },
     },
-  });
+    {
+      code: "business",
+      name: { fr: "Business", en: "Business" },
+      priceAmount: 4900,
+      limits: {
+        stores: 5,
+        products: 5000,
+        staff: 20,
+        aiCredits: 1500,
+        campaigns: 100,
+        crm: true,
+        social: true,
+        analyticsAssistant: true,
+        features: [
+          "catalogue",
+          "orders",
+          "payments",
+          "whatsapp",
+          "crm",
+          "social",
+          "ai_ads",
+        ],
+      },
+    },
+    {
+      code: "premium",
+      name: { fr: "Premium", en: "Premium" },
+      priceAmount: 9900,
+      limits: {
+        stores: 25,
+        products: 50000,
+        staff: 100,
+        aiCredits: 10000,
+        campaigns: 1000,
+        crm: true,
+        social: true,
+        analyticsAssistant: true,
+        features: [
+          "catalogue",
+          "orders",
+          "payments",
+          "whatsapp",
+          "crm",
+          "social",
+          "ai_ads",
+          "priority_support",
+          "super_limits",
+        ],
+      },
+    },
+  ] as const;
+
+  for (const plan of plans) {
+    await prisma.plan.upsert({
+      where: { code: plan.code },
+      update: {
+        name: plan.name,
+        priceAmount: plan.priceAmount,
+        limits: plan.limits,
+        isActive: true,
+      },
+      create: {
+        code: plan.code,
+        name: plan.name,
+        priceAmount: plan.priceAmount,
+        currency: "USD",
+        interval: "month",
+        limits: plan.limits,
+        isActive: true,
+      },
+    });
+  }
 
   const demoEmail = process.env.SEED_DEMO_EMAIL ?? "demo@smartcommerce.ai";
   const demoPassword = process.env.SEED_DEMO_PASSWORD ?? "Demo1234!";
   const passwordHash = await bcrypt.hash(demoPassword, 12);
 
+  const platformAdminEmail =
+    process.env.PLATFORM_ADMIN_EMAIL || demoEmail;
+
   const user = await prisma.user.upsert({
     where: { email: demoEmail },
-    update: { passwordHash, name: "Demo Merchant" },
+    update: {
+      passwordHash,
+      name: "Demo Merchant",
+      isPlatformAdmin: demoEmail === platformAdminEmail,
+    },
     create: {
       email: demoEmail,
       passwordHash,
       name: "Demo Merchant",
       locale: "fr",
       preferredCurrency: "USD",
+      isPlatformAdmin: demoEmail === platformAdminEmail,
     },
   });
+
+  if (platformAdminEmail !== demoEmail) {
+    const adminHash = await bcrypt.hash(
+      process.env.PLATFORM_ADMIN_PASSWORD || demoPassword,
+      12,
+    );
+    await prisma.user.upsert({
+      where: { email: platformAdminEmail },
+      update: { passwordHash: adminHash, isPlatformAdmin: true },
+      create: {
+        email: platformAdminEmail,
+        passwordHash: adminHash,
+        name: "Platform Admin",
+        locale: "fr",
+        isPlatformAdmin: true,
+      },
+    });
+  }
 
   const orgOwner = await prisma.role.findUniqueOrThrow({
     where: { code: "ORG_OWNER" },

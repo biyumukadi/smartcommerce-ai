@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { CREDIT_COSTS } from "./strategies";
+import { getOrgPlanContext } from "@/lib/billing/enforcement";
 
 export class CreditsExceededError extends Error {
   constructor(used: number, limit: number) {
@@ -20,11 +21,21 @@ function periodBounds(now = new Date()) {
   return { periodStart, periodEnd };
 }
 
+async function planAiCreditLimit(organizationId: string) {
+  try {
+    const { limits } = await getOrgPlanContext(organizationId);
+    return limits.aiCredits;
+  } catch {
+    return Number(process.env.AI_CREDITS_LIMIT || 500);
+  }
+}
+
 export async function getOrCreateUsage(organizationId: string) {
   const { periodStart, periodEnd } = periodBounds();
+  const creditsLimit = await planAiCreditLimit(organizationId);
   return prisma.aIUsage.upsert({
     where: { organizationId_periodStart: { organizationId, periodStart } },
-    update: {},
+    update: { creditsLimit },
     create: {
       organizationId,
       periodStart,
@@ -33,7 +44,7 @@ export async function getOrCreateUsage(organizationId: string) {
       imageCount: 0,
       videoCount: 0,
       creditsUsed: 0,
-      creditsLimit: Number(process.env.AI_CREDITS_LIMIT || 500),
+      creditsLimit,
       costMinor: 0,
       currency: "USD",
     },

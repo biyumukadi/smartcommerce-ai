@@ -283,26 +283,33 @@ enum MessageStatus {
 }
 
 model User {
-  id                 String    @id @default(cuid())
-  email              String    @unique
-  emailVerified      DateTime?
-  passwordHash       String?
-  name               String?
-  imageUrl           String?
-  locale             String    @default("fr")
-  preferredCurrency  String    @default("USD")
-  status             UserStatus @default(active)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                  String     @id @default(cuid())
+  email               String     @unique
+  emailVerified       DateTime?
+  passwordHash        String?
+  name                String?
+  imageUrl            String?
+  locale              String     @default("fr")
+  preferredCurrency   String     @default("USD")
+  status              UserStatus @default(active)
+  /// Platform super-admin (orgs/stores/subscriptions/integrations)
+  isPlatformAdmin     Boolean    @default(false)
+  /// TOTP MFA for sensitive roles (ORG_OWNER, PLATFORM_ADMIN)
+  mfaEnabled          Boolean    @default(false)
+  mfaSecretEncrypted  String?
+  mfaVerifiedAt       DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
-  accounts           Account[]
-  sessions           Session[]
+  accounts            Account[]
+  sessions            Session[]
   organizationMembers OrganizationMember[]
-  storeMembers       StoreMember[]
-  createdCampaigns   MarketingCampaign[] @relation("CampaignCreator")
-  createdAIJobs      AIJob[] @relation("AIJobCreator")
-  notifications      Notification[]
-  auditLogs          AuditLog[] @relation("AuditActor")
+  storeMembers        StoreMember[]
+  createdCampaigns    MarketingCampaign[] @relation("CampaignCreator")
+  createdAIJobs       AIJob[] @relation("AIJobCreator")
+  notifications       Notification[]
+  auditLogs           AuditLog[] @relation("AuditActor")
+  privacyRequests     PrivacyRequest[]
 }
 
 model Account {
@@ -358,6 +365,8 @@ model Organization {
   invoices        Invoice[]
   notifications   Notification[]
   auditLogs       AuditLog[]
+  privacyRequests PrivacyRequest[]
+  costLedgers     CostLedger[]
 }
 
 model OrganizationMember {
@@ -785,7 +794,13 @@ model Subscription {
   status                 SubscriptionStatus @default(trialing)
   currentPeriodStart     DateTime
   currentPeriodEnd       DateTime
+  cancelAtPeriodEnd      Boolean            @default(false)
+  canceledAt             DateTime?
+  /// stripe | mock | unavailable — never invent paid without provider
+  billingProvider        String?
+  externalCustomerId     String?
   externalSubscriptionId String?
+  metadata               Json?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
@@ -805,9 +820,13 @@ model Invoice {
   amount         Decimal  @db.Decimal(18, 0)
   currency       String
   status         String   @default("draft")
+  /// saas_subscription | usage_pass_through
+  kind           String   @default("saas_subscription")
   pdfKey         String?
   dueAt          DateTime?
   paidAt         DateTime?
+  externalInvoiceId String?
+  lineItems      Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -815,6 +834,58 @@ model Invoice {
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
 
   @@index([organizationId, status])
+}
+
+/// Separate SaaS fees from external Ads/WhatsApp/AI/transaction costs
+model CostLedger {
+  id             String   @id @default(cuid())
+  organizationId String
+  storeId        String?
+  /// saas_fee | ads_spend | whatsapp | ai_usage | payment_fees | other
+  category       String
+  amountMinor    Int
+  currency       String   @default("USD")
+  description    String?
+  externalRef    String?
+  metadata       Json?
+  occurredAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, category, occurredAt])
+  @@index([organizationId, occurredAt])
+}
+
+enum PrivacyRequestType {
+  export
+  delete
+}
+
+enum PrivacyRequestStatus {
+  pending
+  processing
+  completed
+  rejected
+}
+
+model PrivacyRequest {
+  id             String               @id @default(cuid())
+  userId         String
+  organizationId String?
+  type           PrivacyRequestType
+  status         PrivacyRequestStatus @default(pending)
+  payload        Json?
+  resultKey      String?
+  error          String?
+  createdAt      DateTime             @default(now())
+  completedAt    DateTime?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model MarketingCampaign {

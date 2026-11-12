@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: smartcommerce
+          POSTGRES_PASSWORD: smartcommerce
+          POSTGRES_DB: smartcommerce
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartcommerce -d smartcommerce"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://smartcommerce:smartcommerce@localhost:5432/smartcommerce?schema=public
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci-test-secret-at-least-32-characters-long
+      CREDENTIALS_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      PAYMENT_PROVIDER: mock
+      PAYMENT_WEBHOOK_SECRET: ci-webhook
+      SAAS_BILLING_PROVIDER: unavailable
+      WHATSAPP_PROVIDER: mock
+      WHATSAPP_WEBHOOK_SECRET: ci-wa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - run: npm run ci
