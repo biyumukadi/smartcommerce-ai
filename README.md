@@ -64,9 +64,9 @@ npm run worker
 | `npm test` | Tests Vitest (helpers + flux commerce) |
 | `npm run db:migrate` | Migrations Prisma |
 | `npm run db:seed` | Rôles, plan trial, boutique démo |
-| `npm run worker` | Worker BullMQ AI |
+| `npm run worker` | Worker BullMQ (AI + WhatsApp nudges) |
 
-## Ce qui est live vs stub (Phase 3)
+## Ce qui est live vs stub (Phases 3–4)
 
 | Intégration | Statut |
 |-------------|--------|
@@ -75,16 +75,18 @@ npm run worker
 | Catalogue, panier, checkout, stock | **Live** |
 | Paiement **mock** + webhooks signés idempotents | **Live (sandbox)** |
 | **Cash on delivery** (`cod_pending` → confirm marchand) | **Live** |
-| Stripe sandbox (cartes) | **Optionnel** — `STRIPE_SECRET_KEY` + `PAYMENT_PROVIDER=stripe` |
-| Flutterwave sandbox (cartes + MM) | **Optionnel** — `FLW_*` ; sans clés = **unavailable** (pas de faux succès) |
-| Paystack sandbox | **Optionnel** — `PAYSTACK_*` ; sans clés = **unavailable** |
-| Maxicash / FlexPay RDC | **Stub unavailable** — contrat + clés requis |
-| Remboursements | **Live** mock ; sandbox providers si clés + API refund |
-| Reçus PDF | **Live** (générateur minimal) |
-| AI texte/image OpenAI | **Live si `OPENAI_API_KEY`** — sinon job `failed` explicite |
-| Meta / TikTok / WhatsApp | **Stub** |
+| Stripe / Flutterwave / Paystack | **Sandbox-if-keyed** sinon unavailable |
+| Maxicash / FlexPay RDC | **Stub unavailable** |
+| Remboursements / reçus PDF | **Live** (mock / générateur) |
+| WhatsApp CTA produit (`wa.me`) | **Live** si `settings.whatsappCta` |
+| WhatsApp Cloud API envois | **Sandbox-if-keyed** ; sinon mock (dev) / unavailable |
+| Inbox + handoff humain | **Live** |
+| Assistant IA commercial | **Live si OPENAI_API_KEY** + catalogue réel ; sinon fail-closed |
+| Nudges panier abandonné | **Live** uniquement avec consentement |
+| Templates order/payment/delivery | **Hooks live** ; Meta approval requise en prod |
+| Meta Ads / TikTok | **Stub** (Phase 5) |
 
-Détails FR providers : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md)
+Détails FR : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md) · [`docs/whatsapp-meta.fr.md`](docs/whatsapp-meta.fr.md)
 
 ## Paiements — règles Phase 3
 
@@ -97,6 +99,16 @@ Détails FR providers : [`docs/paiements-providers.fr.md`](docs/paiements-provid
 7. Historique : dashboard `/dashboard/payments` + `GET /api/stores/:storeId/payments`.
 8. Refund : `POST /api/stores/:storeId/payments/:paymentId/refund`.
 9. Reçu : `GET /api/stores/:storeId/orders/:orderId/receipt`.
+
+## WhatsApp — règles Phase 4
+
+1. `WHATSAPP_PROVIDER=auto` : Cloud API si token+phone id ; sinon **mock** en development, **unavailable** sinon.
+2. Webhook : `GET/POST /api/whatsapp/webhook` (verify token + signature).
+3. Mock inbound : `POST /api/whatsapp/mock/inbound` (HMAC signé).
+4. Inbox : `/fr/dashboard/inbox` — reply + handoff humain / resume IA.
+5. Assistant : lit **uniquement** produits/stocks/commandes DB ; pas d’invention de prix.
+6. Nudges panier : consentement explicite (`marketingConsentWhatsApp`) obligatoire.
+7. Templates Meta : hooks `notify-order` ; échec clair si template non approuvé / clés absentes.
 
 ## AI Ads Studio
 
@@ -120,6 +132,13 @@ Toutes les requêtes commerce filtrent `storeId` / `organizationId`. Les helpers
 - `POST /api/stores/:storeId/payments/:paymentId/refund`
 - `POST /api/stores/:storeId/orders/:orderId/confirm-cod`
 - `GET /api/stores/:storeId/orders/:orderId/receipt`
+- `GET/POST /api/whatsapp/webhook`
+- `POST /api/whatsapp/mock/inbound`
+- `GET /api/stores/:storeId/conversations`
+- `POST /api/stores/:storeId/conversations/:id/reply|handoff`
+- `POST /api/stores/:storeId/whatsapp/notify-order`
+- `POST /api/stores/:storeId/whatsapp/nudges`
+- `POST /api/storefront/:slug/whatsapp/consent`
 - `POST /api/stores/:storeId/ai/jobs`
 
 ## Variables d’environnement

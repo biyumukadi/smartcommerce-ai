@@ -37,6 +37,7 @@ export default function CheckoutPage() {
           ? String(fd.get("operator"))
           : undefined,
         currency: String(fd.get("currency") || "USD"),
+        whatsappConsent: fd.get("whatsappConsent") === "on",
       }),
     });
     const data = await res.json();
@@ -131,6 +132,17 @@ export default function CheckoutPage() {
             <Label htmlFor="notes">Notes</Label>
             <Input id="notes" name="notes" />
           </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="whatsappConsent"
+              className="mt-1"
+            />
+            <span>
+              J’accepte les rappels WhatsApp (panier abandonné / suivi). Sans
+              case cochée: aucun nudge marketing.
+            </span>
+          </label>
           {error && <p className="text-sm text-red-700">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Création commande…" : "Créer la commande + intent"}

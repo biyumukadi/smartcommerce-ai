@@ -7,6 +7,7 @@ import {
   listProviderCatalog,
   resolveDefaultAggregator,
 } from "@/lib/payments";
+import { getWhatsAppProvider, listWhatsAppCatalog } from "@/lib/whatsapp";
 
 export async function GET() {
   let db = false;
@@ -20,6 +21,7 @@ export async function GET() {
   const healthy = db && redis;
   const active = getPaymentProvider();
   const catalog = listProviderCatalog();
+  const wa = getWhatsAppProvider().describe();
 
   return NextResponse.json(
     {
@@ -43,11 +45,22 @@ export async function GET() {
           requiresContract: p.requiresContract,
         })),
       },
+      whatsapp: {
+        active: wa,
+        catalog: listWhatsAppCatalog().map((p) => ({
+          id: p.id,
+          mode: p.mode,
+          available: p.available,
+          requiresMetaApproval: p.requiresMetaApproval,
+        })),
+      },
       ai: aiProviderStatus(),
       social: {
-        meta: "stub — needs credentials",
-        tiktok: "stub — needs credentials",
-        whatsapp: "stub CTA only — Cloud API not live",
+        meta: "stub — needs credentials (Phase 5 ads)",
+        tiktok: "stub — needs credentials (Phase 5)",
+        whatsapp: wa.available
+          ? `${wa.id}/${wa.mode}`
+          : "Cloud API unavailable without token — mock/dev or configure keys",
       },
     },
     { status: healthy ? 200 : 503 },

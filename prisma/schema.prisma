@@ -167,6 +167,36 @@ enum SocialConnectionStatus {
   needs_approval
 }
 
+enum ConversationChannel {
+  whatsapp
+  instagram
+  tiktok
+  email
+  web
+}
+
+enum ConversationStatus {
+  open
+  pending
+  human_handoff
+  closed
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+  system
+}
+
+enum MessageStatus {
+  queued
+  sent
+  delivered
+  read
+  failed
+  unavailable
+}
+
 model User {
   id                 String    @id @default(cuid())
   email              String    @unique
@@ -294,6 +324,8 @@ model Store {
   creatives    AdCreative[]
   aiJobs       AIJob[]
   socialConnections SocialConnection[]
+  conversations Conversation[]
+  messages     Message[]
   notifications Notification[]
   auditLogs    AuditLog[]
 
@@ -418,22 +450,26 @@ model Inventory {
 }
 
 model Customer {
-  id        String    @id @default(cuid())
-  storeId   String
-  userId    String?
-  email     String?
-  phone     String?
-  name      String?
-  locale    String?
-  tags      String[]  @default([])
-  metadata  Json?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id                      String    @id @default(cuid())
+  storeId                 String
+  userId                  String?
+  email                   String?
+  phone                   String?
+  name                    String?
+  locale                  String?
+  tags                    String[]  @default([])
+  metadata                Json?
+  /// Explicit opt-in for WhatsApp marketing / abandoned-cart nudges
+  marketingConsentWhatsApp Boolean  @default(false)
+  marketingConsentAt      DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  deletedAt               DateTime?
 
-  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  carts  Cart[]
-  orders Order[]
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  carts         Cart[]
+  orders        Order[]
+  conversations Conversation[]
 
   @@index([storeId, phone])
   @@index([storeId, userId])
@@ -441,15 +477,16 @@ model Customer {
 }
 
 model Cart {
-  id         String     @id @default(cuid())
-  storeId    String
-  customerId String?
-  sessionId  String?
-  currency   String
-  status     CartStatus @default(open)
-  expiresAt  DateTime?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id                  String     @id @default(cuid())
+  storeId             String
+  customerId          String?
+  sessionId           String?
+  currency            String
+  status              CartStatus @default(open)
+  expiresAt           DateTime?
+  abandonedNudgeSentAt DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
   store    Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   customer Customer?  @relation(fields: [customerId], references: [id])
@@ -458,6 +495,49 @@ model Cart {
   @@index([storeId, sessionId])
   @@index([storeId, customerId])
   @@index([status, expiresAt])
+  @@index([status, abandonedNudgeSentAt])
+}
+
+model Conversation {
+  id               String             @id @default(cuid())
+  storeId          String
+  customerId       String?
+  channel          ConversationChannel @default(whatsapp)
+  externalThreadId String?
+  status           ConversationStatus @default(open)
+  assignedToUserId String?
+  aiEnabled        Boolean            @default(true)
+  lastMessageAt    DateTime?
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  messages Message[]
+
+  @@unique([storeId, channel, externalThreadId])
+  @@index([storeId, status, lastMessageAt])
+}
+
+model Message {
+  id                String           @id @default(cuid())
+  conversationId    String
+  storeId           String
+  direction         MessageDirection
+  body              String
+  media             Json?
+  externalMessageId String?
+  status            MessageStatus    @default(queued)
+  sentByUserId      String?
+  error             String?
+  createdAt         DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([storeId, externalMessageId])
 }
 
 model CartItem {

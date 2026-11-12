@@ -36,6 +36,7 @@ export default async function DashboardLayout({
             <Link href={`/${locale}/dashboard/products`}>Produits</Link>
             <Link href={`/${locale}/dashboard/orders`}>Commandes</Link>
             <Link href={`/${locale}/dashboard/payments`}>Paiements</Link>
+            <Link href={`/${locale}/dashboard/inbox`}>Inbox WA</Link>
             <Link href={`/${locale}/dashboard/ads`}>Studio AI</Link>
             {store && (
               <Link href={`/${locale}/s/${store.slug}`} className="text-[var(--brand)]">
