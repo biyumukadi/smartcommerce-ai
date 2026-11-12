@@ -1,0 +1,34 @@
+{
+  "brand": "SmartCommerce AI",
+  "tagline": "Your online store, built for Africa and the DRC.",
+  "nav": {
+    "login": "Log in",
+    "register": "Create account",
+    "dashboard": "Dashboard",
+    "storefront": "Storefront",
+    "products": "Products",
+    "orders": "Orders",
+    "ads": "AI Ads Studio",
+    "logout": "Log out"
+  },
+  "cta": {
+    "start": "Launch my store",
+    "whatsapp": "Order via WhatsApp",
+    "addToCart": "Add to cart",
+    "checkout": "Checkout",
+    "confirmMock": "Confirm sandbox payment"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "org": "Organization",
+    "store": "Store"
+  },
+  "checkout": {
+    "sandboxNotice": "Sandbox/mock payment mode — orders are marked paid only after provider confirmation."
+  },
+  "ai": {
+    "missingKey": "OpenAI key missing — generation fails closed (no fake success)."
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "brand": "SmartCommerce AI",
+  "tagline": "Votre boutique en ligne, pensée pour l'Afrique et la RDC.",
+  "nav": {
+    "login": "Connexion",
+    "register": "Créer un compte",
+    "dashboard": "Tableau de bord",
+    "storefront": "Vitrine",
+    "products": "Produits",
+    "orders": "Commandes",
+    "ads": "Studio Pubs AI",
+    "logout": "Déconnexion"
+  },
+  "cta": {
+    "start": "Lancer ma boutique",
+    "whatsapp": "Commander via WhatsApp",
+    "addToCart": "Ajouter au panier",
+    "checkout": "Payer",
+    "confirmMock": "Confirmer paiement sandbox"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Mot de passe",
+    "name": "Nom",
+    "org": "Organisation",
+    "store": "Boutique"
+  },
+  "checkout": {
+    "sandboxNotice": "Mode paiement sandbox/mock — la commande n'est marquée payée qu'après confirmation provider."
+  },
+  "ai": {
+    "missingKey": "Clé OpenAI absente — génération impossible (échec explicite, pas de faux succès)."
+  }
+}
