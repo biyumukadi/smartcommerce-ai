@@ -66,7 +66,7 @@ npm run worker
 | `npm run db:seed` | Rôles, plan trial, boutique démo |
 | `npm run worker` | Worker BullMQ (AI + WhatsApp nudges) |
 
-## Ce qui est live vs stub (Phases 3–4)
+## Ce qui est live vs stub (Phases 3–5)
 
 | Intégration | Statut |
 |-------------|--------|
@@ -84,9 +84,10 @@ npm run worker
 | Assistant IA commercial | **Live si OPENAI_API_KEY** + catalogue réel ; sinon fail-closed |
 | Nudges panier abandonné | **Live** uniquement avec consentement |
 | Templates order/payment/delivery | **Hooks live** ; Meta approval requise en prod |
-| Meta Ads / TikTok | **Stub** (Phase 5) |
+| Meta / TikTok OAuth, posts, Ads scaffolding | **Sandbox-if-keyed** ; sinon unavailable |
+| Attribution UTM / click ids | **Live** |
 
-Détails FR : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md) · [`docs/whatsapp-meta.fr.md`](docs/whatsapp-meta.fr.md)
+Détails FR : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md) · [`docs/whatsapp-meta.fr.md`](docs/whatsapp-meta.fr.md) · [`docs/social-meta-tiktok.fr.md`](docs/social-meta-tiktok.fr.md)
 
 ## Paiements — règles Phase 3
 
@@ -110,12 +111,22 @@ Détails FR : [`docs/paiements-providers.fr.md`](docs/paiements-providers.fr.md)
 6. Nudges panier : consentement explicite (`marketingConsentWhatsApp`) obligatoire.
 7. Templates Meta : hooks `notify-order` ; échec clair si template non approuvé / clés absentes.
 
+## Social Meta / TikTok — règles Phase 5
+
+1. OAuth : `POST /api/social/meta|tiktok/start` — redirect ou `unavailable` sans clés.
+2. Tokens chiffrés dans `SocialConnection` (`CREDENTIALS_ENCRYPTION_KEY`).
+3. Catalogue : sync Meta si `META_CATALOG_ID` ; sinon export manuel (`exported`).
+4. Posts : draft par défaut ; publish seulement avec `confirmPublish=true` + credentials.
+5. Ads : `confirmSpend=true` obligatoire ; Meta campaigns **PAUSED** ; TikTok Ads si `TIKTOK_ADS_ELIGIBLE=true`.
+6. Attribution : UTM / fbclid / ttclid → `AttributionEvent` (storefront + checkout).
+7. Dashboard : `/fr/dashboard/social`.
+
 ## AI Ads Studio
 
 - Interfaces `TextGenProvider` / `ImageGenProvider`
 - Sans `OPENAI_API_KEY` : provider `noop` → **échec explicite** (pas de faux succès)
 - Usage suivi dans `AIUsage`
-- Pas de publication Meta/TikTok dans ce MVP
+- Publication réseaux = Phase 5 (confirm gates) — pas de faux succès
 
 ## Multi-tenant
 
@@ -139,6 +150,12 @@ Toutes les requêtes commerce filtrent `storeId` / `organizationId`. Les helpers
 - `POST /api/stores/:storeId/whatsapp/notify-order`
 - `POST /api/stores/:storeId/whatsapp/nudges`
 - `POST /api/storefront/:slug/whatsapp/consent`
+- `POST /api/social/:platform/start` · `GET /api/social/:platform/callback`
+- `GET /api/stores/:storeId/social/connections`
+- `POST /api/stores/:storeId/social/catalog`
+- `GET/POST /api/stores/:storeId/social/posts`
+- `GET/POST /api/stores/:storeId/social/campaigns`
+- `POST /api/storefront/:slug/attribution`
 - `POST /api/stores/:storeId/ai/jobs`
 
 ## Variables d’environnement

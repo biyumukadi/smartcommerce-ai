@@ -21,6 +21,16 @@ const schema = z.object({
   operator: z.enum(["mpesa", "airtel_money", "orange_money"]).optional(),
   currency: z.enum(["USD", "CDF", "EUR"]).optional(),
   whatsappConsent: z.boolean().optional(),
+  utm: z
+    .object({
+      source: z.string().optional(),
+      medium: z.string().optional(),
+      campaign: z.string().optional(),
+      content: z.string().optional(),
+      term: z.string().optional(),
+      clickId: z.string().optional(),
+    })
+    .optional(),
 });
 
 export async function POST(req: Request, { params }: Params) {
@@ -107,6 +117,22 @@ export async function POST(req: Request, { params }: Params) {
       customerPhone: body.phone || undefined,
       customerName: body.name,
     });
+
+    if (body.utm?.source || sessionId) {
+      try {
+        const { attachOrderAttribution } = await import(
+          "@/lib/social/attribution"
+        );
+        await attachOrderAttribution({
+          storeId: store.id,
+          orderId: order.id,
+          sessionId,
+          utm: body.utm,
+        });
+      } catch {
+        // attribution must never block checkout
+      }
+    }
 
     const refreshed = await prisma.order.findUniqueOrThrow({
       where: { id: order.id },
